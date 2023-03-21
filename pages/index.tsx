@@ -1,11 +1,87 @@
+import { NextPage } from 'next';
 import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from '@/styles/Home.module.css'
+import { useState, useCallback, useEffect } from 'react';
+import {
+  Metaplex,
+  walletAdapterIdentity,
+  CandyMachine,
+  Nft,
+  DefaultCandyGuardSettings,
+  FindNftByMintOutput,
+} from "@metaplex-foundation/js";
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
-const inter = Inter({ subsets: ['latin'] })
+const CANDY_MACHINE_ID = "2GxXbWjkv2N4jjUQVvc8AMsMrozuqSkf8EZVMCitT41M";
+const COLLECTION_ADDRESS = "5FusHaKEKjfKsmQwXNrhFcFABGGxu7iYCdbvyVSRe3Ri";
 
-export default function Home() {
+export const RPC_URL =
+  (process.env.NEXT_PUBLIC_RPC_URL as string) || "https://rpc.ankr.com/solana";
+
+
+const connection = new Connection(RPC_URL);
+
+enum Holder {
+  Yay,
+  Nay,
+}
+
+const Home: NextPage = () => {
+  const [network, setNetwork] = useState(WalletAdapterNetwork.Mainnet);
+  const [loading, setLoading] = useState(true);
+  const { publicKey } = useWallet();
+  // console.log(publicKey?.toString());
+  const [candymachine, setCandymachine] = useState<CandyMachine<DefaultCandyGuardSettings>>();
+  const [holder, setHolder] = useState<Holder>(Holder.Nay);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  });
+
+  const getCandyMachine = useCallback(async () => {
+    const metaplex = new Metaplex(connection);
+    const candyMachineAddress = new PublicKey(CANDY_MACHINE_ID);
+    // const user = await metaplex.identity().publicKey;
+    // console.log(user.toString());
+    const candyMachine = await metaplex
+      .candyMachines()
+      .findByAddress({ address: candyMachineAddress })
+      .then((res) => {
+        if (res) {
+          setCandymachine(res);
+          return res;
+        }
+      });
+    if (publicKey) {
+      const myNFTs = await metaplex.nfts().findAllByOwner({
+        owner: new PublicKey(publicKey)
+      });
+
+      console.log(myNFTs);
+      myNFTs.forEach(nft => {
+        console.log(nft.address.toString());
+        if (nft.collection) {
+          console.log("collection address :", nft.collection.address.toString());
+          if (nft.collection.address.toString() == COLLECTION_ADDRESS) {
+            setHolder(Holder.Yay);
+          }
+        }
+        console.log(nft.address.toString());
+      })
+    }
+    // console.log(myNFTs);
+    console.log(candyMachine);
+    return candyMachine;
+  }, [connection, publicKey]);
+
+  useEffect(() => {
+    setTimeout(getCandyMachine, 1000);
+  }, [publicKey]);
+
   return (
     <>
       <Head>
@@ -14,110 +90,13 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>pages/index.tsx</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
-            />
-          </div>
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
-        </div>
+      <main className='h-screen w-screen flex flex-col justify-center items-center'>
+        <h1 className="text-3xl font-bold underline">Hello World</h1>
+        {!loading && <WalletMultiButton />}
+        {holder === Holder.Yay ? 'You are a holder!' : 'You are not a holder :('}
       </main>
     </>
   )
 }
+
+export default Home;
